@@ -57,26 +57,37 @@
     </div>
 
     <div class="nutrition-details">
-      <h3 class="section-title">营养成分详情</h3>
+      <div class="section-header" @click="toggleNutritionDetail">
+        <h3 class="section-title">营养成分详情</h3>
+        <van-icon :name="showNutritionDetail ? 'arrow-up' : 'arrow-down'" />
+      </div>
       
-      <van-cell-group>
-        <van-cell title="热量" :value="`${foodData?.calories || 0} kcal/100g`" />
-        <van-cell title="蛋白质" :value="`${foodData?.protein || 0} g/100g`" />
-        <van-cell title="碳水化合物" :value="`${foodData?.carbs || 0} g/100g`" />
-        <van-cell title="脂肪" :value="`${foodData?.fat || 0} g/100g`" />
-        <van-cell title="膳食纤维" :value="`${foodData?.fiber || 0} g/100g`" />
-        <van-cell title="维生素C" :value="`${foodData?.vitaminC || 0} mg/100g`" />
-        <van-cell title="钙" :value="`${foodData?.calcium || 0} mg/100g`" />
-        <van-cell title="铁" :value="`${foodData?.iron || 0} mg/100g`" />
-      </van-cell-group>
+      <transition name="slide">
+        <van-cell-group v-show="showNutritionDetail">
+          <van-cell title="热量" :value="`${foodData?.calories || 0} kcal/100g`" />
+          <van-cell title="蛋白质" :value="`${foodData?.protein || 0} g/100g`" />
+          <van-cell title="碳水化合物" :value="`${foodData?.carbs || 0} g/100g`" />
+          <van-cell title="脂肪" :value="`${foodData?.fat || 0} g/100g`" />
+          <van-cell title="膳食纤维" :value="`${foodData?.fiber || 0} g/100g`" />
+          <van-cell title="维生素C" :value="`${foodData?.vitaminC || 0} mg/100g`" />
+          <van-cell title="钙" :value="`${foodData?.calcium || 0} mg/100g`" />
+          <van-cell title="铁" :value="`${foodData?.iron || 0} mg/100g`" />
+        </van-cell-group>
+      </transition>
     </div>
 
     <div class="health-tips">
       <h3 class="section-title">健康提示</h3>
       <div class="tips-list">
-        <div class="tip-item" v-for="(tip, index) in healthTips" :key="index">
+        <div 
+          class="tip-item" 
+          v-for="(tip, index) in healthTips" 
+          :key="index"
+          @click="showTipDetail(tip)"
+        >
           <van-icon :name="tip.icon" :color="tip.color" />
           <span>{{ tip.text }}</span>
+          <van-icon name="arrow-right" size="14" color="#999" />
         </div>
       </div>
     </div>
@@ -103,10 +114,11 @@ const loading = ref(false);
 const retryLoading = ref(false);
 const error = ref(false);
 const foodData = ref(null);
+const showNutritionDetail = ref(true);
 const healthTips = ref([
- { icon: 'check-circle-o', color: '#4CAF50', text: '低热量高营养，适合减肥人群' },
- { icon: 'check-circle-o', color: '#4CAF50', text: '富含抗氧化物质' },
- { icon: 'info-o', color: '#2196F3', text: '烹饪时间不宜过长' }
+ { icon: 'check-circle-o', color: '#4CAF50', text: '低热量高营养，适合减肥人群', detail: '热量密度低，富含营养成分，是减肥期间的理想食材选择' },
+ { icon: 'check-circle-o', color: '#4CAF50', text: '富含抗氧化物质', detail: '含有丰富的维生素C和类黄酮，有助于抵抗自由基对身体的损害' },
+ { icon: 'info-o', color: '#2196F3', text: '烹饪时间不宜过长', detail: '长时间高温烹饪会破坏营养成分，建议焯水或快速翻炒' }
 ]);
 
 // 计算属性
@@ -123,6 +135,16 @@ const goBack = () => {
 // 跳转到识别页
 const goToRecognize = () => {
  router.push('/recognize');
+};
+
+// 切换营养详情展开/折叠
+const toggleNutritionDetail = () => {
+ showNutritionDetail.value = !showNutritionDetail.value;
+};
+
+// 显示健康提示详情
+const showTipDetail = (tip) => {
+ showToast({ type: 'none', message: tip.detail, duration: 3000 });
 };
 
 // 加载食物数据
@@ -276,21 +298,67 @@ onMounted(() => {
   }
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  margin-bottom: 12px;
+  
+  .section-title {
+    margin-bottom: 0;
+  }
+  
+  .van-icon {
+    transition: transform 0.3s ease;
+    color: #999;
+  }
+}
+
 .tips-list {
   .tip-item {
     display: flex;
     align-items: center;
-    padding: 8px 0;
+    padding: 12px 0;
+    border-bottom: 1px solid #f5f5f5;
+    transition: background-color 0.2s ease;
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    &:active {
+      background-color: #f5f5f5;
+    }
     
     .van-icon {
       margin-right: 8px;
     }
     
     span {
+      flex: 1;
       font-size: 14px;
       color: #666;
     }
   }
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+
+.slide-enter-to,
+.slide-leave-from {
+  opacity: 1;
+  max-height: 500px;
 }
 
 .dietary-suggestions {
