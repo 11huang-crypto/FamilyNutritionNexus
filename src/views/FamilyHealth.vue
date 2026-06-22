@@ -55,7 +55,7 @@
             label="饮食禁忌" 
             placeholder="请输入饮食禁忌"
           />
-        </div>
+        </van-cell-group>
 
         <div class="section-header">
           <van-icon name="user" size="20" />

@@ -11,6 +11,17 @@ import axios from '../utils/axios';
  * @param {FormData} formData - 包含图片的 FormData 对象
  * @returns {Promise<Object>} - 识别结果
  */
+/** 快速识别（Mock模式下使用，仅需食材名称） */
+export const analyzeFood = async (data) => {
+  try {
+    const response = await axios.post('/api/analyze', data)
+    return response
+  } catch (error) {
+    console.error('食材识别失败:', error)
+    throw error
+  }
+}
+
 export const analyzeImage = async (formData) => {
   // 校验参数
   if (!(formData instanceof FormData)) {
@@ -72,6 +83,9 @@ export const checkFoodConflict = async (data) => {
     throw error;
   }
 };
+
+/** 菜篮子冲突检查（别名，供BasketView调用） */
+export const checkBasketConflict = checkFoodConflict
 
 /**
  * 生成一周食谱

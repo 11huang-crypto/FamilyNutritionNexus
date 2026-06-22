@@ -1,11 +1,21 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
-import { Button, Image as VantImage, Uploader, Divider, Tag, Cell, CellGroup, Card, Progress, List, Stepper, Checkbox, Icon, NavBar, Popup, Dialog, Toast, Loading, Swipe, SwipeItem } from 'vant'
+
+// Vant 组件库
+import { Button, Image as VantImage, Uploader, Divider, Tag, Cell, CellGroup, Card, Progress, List, Stepper, Checkbox, Icon, NavBar, Popup, Dialog, Toast, Loading, Swipe, SwipeItem, Tabbar, TabbarItem, Badge, Notify, Empty, PullRefresh } from 'vant'
 import 'vant/lib/index.css'
+
+// 全局样式
+import './styles/design-system.scss'
+
+// Mock 数据（开发环境）
+import './mock'
 
 const app = createApp(App)
 
+app.use(createPinia())
 app.use(router)
 
 app.use(Button)
@@ -28,5 +38,11 @@ app.use(Toast)
 app.use(Loading)
 app.use(Swipe)
 app.use(SwipeItem)
+app.use(Tabbar)
+app.use(TabbarItem)
+app.use(Badge)
+app.use(Notify)
+app.use(Empty)
+app.use(PullRefresh)
 
 app.mount('#app')
