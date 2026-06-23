@@ -54,7 +54,7 @@
 
       <div v-if="store.basket.length === 0" class="empty-state">
         <van-empty description="菜篮子空空如也，去拍张照试试吧" />
-        <van-button type="primary" round @click="$router.push('/analyze')">去拍照</van-button>
+        <van-button type="primary" round @click="$router.push('/recognize')">去拍照</van-button>
       </div>
 
       <TransitionGroup name="list" tag="div" class="basket-list">
@@ -65,7 +65,7 @@
           variant="list"
           :deletable="true"
           @click="viewDetail(item)"
-          @delete="store.removeFromBasket(item.id)"
+          @delete="removeFromBasket(item)"
         />
       </TransitionGroup>
 
@@ -75,13 +75,16 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { Toast } from 'vant'
 import AppNavbar from '@/components/AppNavbar.vue'
 import VegCard from '@/components/VegCard.vue'
 import AlertBar from '@/components/AlertBar.vue'
 import { useAppStore } from '@/stores'
-import { checkBasketConflict } from '@/api'
+import { checkBasketConflict, getFamilyBasket, removeFromBasket as removeFromBasketAPI } from '@/api'
 
+const router = useRouter()
 const store = useAppStore()
 const showAdd = ref(false)
 const conflicts = ref([])
@@ -92,7 +95,7 @@ const lowFreshCount = computed(() => store.basket.filter(i => i.freshness < 80).
 
 const checkConflict = async () => {
   try {
-    const res = await checkBasketConflict(store.basket.map(i => i.name))
+    const res = await checkBasketConflict({ items: store.basket.map(i => i.name) })
     conflicts.value = res.data.conflicts
 
     if (!res.data.hasConflict) {
@@ -104,10 +107,45 @@ const checkConflict = async () => {
 }
 
 const viewDetail = (item) => {
-  console.log('查看详情:', item.name)
+  const nutrients = item.nutrients || {}
+  const enrichedData = {
+    ...item,
+    calories: nutrients.calories || Math.round((nutrients.vitaminC || 0) * 1.5 + (nutrients.fiber || 0) * 20 + (nutrients.potassium || 0) * 0.2),
+    protein: nutrients.protein || 0,
+    carbs: nutrients.carbs || 0,
+    fat: nutrients.fat || 0,
+    fiber: nutrients.fiber || 0,
+    vitaminC: nutrients.vitaminC || 0,
+    calcium: nutrients.calcium || 0,
+    iron: nutrients.iron || 0
+  }
+  const data = encodeURIComponent(JSON.stringify(enrichedData))
+  router.push({ path: '/nutrition', query: { data } })
 }
 
-import { Toast } from 'vant'
+const removeFromBasket = async (item) => {
+  try {
+    await removeFromBasketAPI(item.id)
+    store.removeFromBasket(item.id)
+  } catch (err) {
+    Toast.fail('删除失败，请重试')
+  }
+}
+
+const loadBasketData = async () => {
+  try {
+    const res = await getFamilyBasket()
+    if (res.code === 200 && res.data?.items) {
+      store.basket = res.data.items
+    }
+  } catch (err) {
+    console.error('加载菜篮子数据失败:', err)
+  }
+}
+
+onMounted(() => {
+  loadBasketData()
+})
 </script>
 
 <style scoped lang="scss">

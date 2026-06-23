@@ -84,9 +84,9 @@
       <div class="nutrition-section">
         <h4 class="section-title">营养成分</h4>
         <van-cell-group inset class="nutrition-list">
-          <van-cell title="维生素C" :value="`${analysisResult.nutrition?.vitaminC || 0} mg/100g`" />
-          <van-cell title="铁" :value="`${analysisResult.nutrition?.iron || 0} mg/100g`" />
-          <van-cell title="膳食纤维" :value="`${analysisResult.nutrition?.fiber || 0} g/100g`" />
+          <van-cell title="维生素C" :value="`${analysisResult.nutrients?.vitaminC || 0} mg/100g`" />
+          <van-cell title="铁" :value="`${analysisResult.nutrients?.iron || 0} mg/100g`" />
+          <van-cell title="膳食纤维" :value="`${analysisResult.nutrients?.fiber || 0} g/100g`" />
         </van-cell-group>
       </div>
       
@@ -123,7 +123,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
 // 导入封装的 API 接口
-import { analyzeImage } from '../api';
+import { analyzeImage, addToBasket as addToBasketAPI } from '../api';
 
 // 路由实例
 const router = useRouter();
@@ -209,7 +209,6 @@ const cancelUpload = () => {
  * 5. 处理响应结果或错误
  */
 const startAnalyze = async () => {
-  // 【前置校验】检查是否选择了图片
   if (!uploadedImage.value) {
     showToast({
       type: 'fail',
@@ -219,41 +218,35 @@ const startAnalyze = async () => {
   }
   
   try {
-    // 【加载状态】设置加载状态，禁用按钮
     loading.value = true;
-    
-    // 【关键逻辑1】将base64图片转换为Blob对象
     const blob = await base64ToBlob(uploadedImage.value);
-    
-    // 【关键逻辑2】创建FormData对象，用于上传
     const formData = new FormData();
-    formData.append('image', blob, 'food.jpg');  // 字段名 'image' 需与后端约定一致
+    formData.append('image', blob, 'food.jpg');
     
-    // 【关键逻辑3】调用真实的识别接口
-    // POST /api/analyze - 图片识别+营养分析
     const result = await analyzeImage(formData);
     
-    // 【成功处理】接口返回成功（code=200），保存识别结果
-    // 响应数据格式：{ code: 200, data: { name, freshness, nutrition }, message: '识别成功' }
-    analysisResult.value = result.data;
+    if (result.data && result.data.results && result.data.results.length > 0) {
+      analysisResult.value = result.data.results[0];
+      if (result.data.alerts && result.data.alerts.length > 0) {
+        analysisResult.value.alerts = result.data.alerts;
+      }
+    } else if (result.data) {
+      analysisResult.value = result.data;
+    } else {
+      analysisResult.value = null;
+      showToast({ type: 'fail', message: '未识别到食材' });
+      return;
+    }
     
-    // 显示成功提示
     showToast({
       type: 'success',
       message: result.message || '识别成功'
     });
     
   } catch (error) {
-    // 【错误处理】接口调用失败
-    // 注意：HTTP 错误（400/500/网络错误）已在 axios 拦截器中处理并提示
-    // 这里可以做一些额外的错误日志记录或状态重置
     console.error('识别过程出错:', error);
-    
-    // 重置识别结果状态
     analysisResult.value = null;
-    
   } finally {
-    // 【结束状态】无论成功或失败，都结束加载状态
     loading.value = false;
   }
 };
@@ -296,15 +289,36 @@ const generateFoodImage = (foodName) => {
 /**
  * 将识别结果加入菜篮子
  */
-const addToBasket = () => {
-  showToast({
-    type: 'success',
-    message: '已加入菜篮子'
-  });
-  // 延迟1.5秒后返回首页
-  setTimeout(() => {
-    router.push('/');
-  }, 1500);
+const addToBasket = async () => {
+  if (!analysisResult.value) {
+    showToast({ type: 'fail', message: '请先识别食材' });
+    return;
+  }
+  
+  try {
+    const itemData = {
+      name: analysisResult.value.name,
+      category: analysisResult.value.category || '蔬菜',
+      quantity: 1,
+      unit: '个',
+      image: analysisResult.value.image || '',
+      nutrients: analysisResult.value.nutrients || {}
+    };
+    
+    await addToBasketAPI(itemData);
+    
+    showToast({
+      type: 'success',
+      message: '已加入菜篮子'
+    });
+    
+    setTimeout(() => {
+      router.push('/basket');
+    }, 1500);
+  } catch (error) {
+    console.error('添加到菜篮子失败:', error);
+    showToast({ type: 'fail', message: '添加失败，请重试' });
+  }
 };
 
 /**

@@ -103,11 +103,7 @@ const loading = ref(false);
 const retryLoading = ref(false);
 const error = ref(false);
 const foodData = ref(null);
-const healthTips = ref([
- { icon: 'check-circle-o', color: '#4CAF50', text: '低热量高营养，适合减肥人群' },
- { icon: 'check-circle-o', color: '#4CAF50', text: '富含抗氧化物质' },
- { icon: 'info-o', color: '#2196F3', text: '烹饪时间不宜过长' }
-]);
+const healthTips = ref([]);
 
 // 计算属性
 const totalCalories = computed(() => foodData.value?.calories || 0);
@@ -125,35 +121,75 @@ const goToRecognize = () => {
  router.push('/recognize');
 };
 
-// 加载食物数据
+// 根据食材数据动态生成健康提示
+const generateHealthTips = (data) => {
+ if (!data) return;
+ const tips = [];
+ if (data.vitaminC > 30) {
+ tips.push({ icon: 'check-circle-o', color: '#4CAF50', text: '富含维生素C，有助于增强免疫力' });
+ }
+ if (data.fiber > 2) {
+ tips.push({ icon: 'check-circle-o', color: '#4CAF50', text: '富含膳食纤维，有助于促进消化' });
+ }
+ if (data.calories < 50) {
+ tips.push({ icon: 'check-circle-o', color: '#4CAF50', text: '低热量食材，适合控制体重' });
+ }
+ if (data.iron > 1) {
+ tips.push({ icon: 'check-circle-o', color: '#4CAF50', text: '含铁丰富，有助于预防贫血' });
+ }
+ if (data.calcium > 30) {
+ tips.push({ icon: 'check-circle-o', color: '#4CAF50', text: '含钙丰富，有助于骨骼健康' });
+ }
+ if (data.fat > 5) {
+ tips.push({ icon: 'info-o', color: '#2196F3', text: '脂肪含量较高，建议适量食用' });
+ }
+ if (tips.length === 0) {
+ tips.push({ icon: 'info-o', color: '#2196F3', text: '营养均衡，建议适量食用' });
+ }
+ healthTips.value = tips;
+};
+
 const loadFoodData = async () => {
  try {
  loading.value = true;
+ retryLoading.value = true;
  error.value = false;
  
- // 从路由参数获取数据
  const dataParam = route.query.data;
  if (dataParam) {
  try {
- const parsedData = JSON.parse(decodeURIComponent(dataParam));
+ const decodedData = decodeURIComponent(dataParam);
+ const parsedData = JSON.parse(decodedData);
+ 
+ if (!parsedData || typeof parsedData !== 'object') {
+ throw new Error('数据格式无效');
+ }
+ 
+ const nutrients = parsedData.nutrition || parsedData;
+ 
  foodData.value = {
- ...parsedData,
- calories: parsedData.nutrition?.calories || 0,
- protein: parsedData.nutrition?.protein || 0,
- carbs: parsedData.nutrition?.carbs || 0,
- fat: parsedData.nutrition?.fat || 0,
- fiber: parsedData.nutrition?.fiber || 0,
- vitaminC: parsedData.nutrition?.vitaminC || 0,
- calcium: parsedData.nutrition?.calcium || 0,
- iron: parsedData.nutrition?.iron || 0,
- suggestion: '根据营养成分分析，建议适量食用'
+ name: parsedData.name || '未知食材',
+ category: parsedData.category || '其他',
+ calories: nutrients.calories || parsedData.calories || 0,
+ protein: nutrients.protein || parsedData.protein || 0,
+ carbs: nutrients.carbs || parsedData.carbs || 0,
+ fat: nutrients.fat || parsedData.fat || 0,
+ fiber: nutrients.fiber || parsedData.fiber || 0,
+ vitaminC: nutrients.vitaminC || parsedData.vitaminC || 0,
+ calcium: nutrients.calcium || parsedData.calcium || 0,
+ iron: nutrients.iron || parsedData.iron || 0,
+ suggestion: parsedData.suggestion || '根据营养成分分析，建议适量食用'
  };
+ 
+ // 动态生成健康提示
+ generateHealthTips(foodData.value);
  } catch (e) {
  console.error('解析数据失败:', e);
- throw new Error('数据解析失败');
+ foodData.value = null;
  }
- } else {
- // 使用默认数据
+ }
+ 
+ if (!foodData.value) {
  foodData.value = {
  name: '西兰花',
  category: '蔬菜类',
@@ -165,8 +201,9 @@ const loadFoodData = async () => {
  vitaminC: 51,
  calcium: 47,
  iron: 0.7,
- suggestion: '西兰花富含维生素C和膳食纤维，建议清炒或焯水后凉拌，保留营养成分。'
+ suggestion: '西兰花富含维生素C和膳食纤维，建议清炒或水后凉拌，保留营养成分。'
  };
+ generateHealthTips(foodData.value);
  }
  } catch (e) {
  console.error('加载数据失败:', e);

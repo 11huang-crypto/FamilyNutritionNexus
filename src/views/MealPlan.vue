@@ -31,6 +31,10 @@
     </div>
 
     <div class="bottom-bar">
+      <van-button type="default" block @click="generateShoppingList">
+        <van-icon name="shopping-cart" />
+        生成采购清单
+      </van-button>
       <van-button type="primary" block @click="generatePlan" :loading="loading">
         重新生成食谱
       </van-button>
@@ -44,9 +48,10 @@
 <script setup>import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
-import { generateMealPlan } from '../api';
+import { generateMealPlan, getFamilyHealth } from '../api';
 const router = useRouter();
 const loading = ref(false);
+const familyHealthData = ref(null);
 const weekDays = [
  { key: 'monday', label: '周一' },
  { key: 'tuesday', label: '周二' },
@@ -61,6 +66,8 @@ const mealTypes = [
  { key: 'lunch', label: '午餐', icon: 'utensils' },
  { key: 'dinner', label: '晚餐', icon: 'moon' }
 ];
+const dayKeyMap = { '周一': 'monday', '周二': 'tuesday', '周三': 'wednesday', '周四': 'thursday', '周五': 'friday', '周六': 'saturday', '周日': 'sunday' };
+const mealKeyMap = { '早餐': 'breakfast', '午餐': 'lunch', '晚餐': 'dinner' };
 const mealPlan = ref({});
 const defaultPlan = {
  monday: {
@@ -69,8 +76,8 @@ const defaultPlan = {
  { name: '水煮蛋', desc: '补充蛋白质', calories: 78 }
  ],
  lunch: [
- { name: '清蒸鱼', desc: '富含优质蛋白', calories: 200 },
  { name: '清炒西兰花', desc: '维生素丰富', calories: 80 },
+ { name: '炒菠菜', desc: '补铁补血', calories: 50 },
  { name: '杂粮饭', desc: '膳食纤维充足', calories: 150 }
  ],
  dinner: [
@@ -84,13 +91,13 @@ const defaultPlan = {
  { name: '牛奶', desc: '补充钙质', calories: 100 }
  ],
  lunch: [
- { name: '红烧排骨', desc: '营养丰富', calories: 300 },
  { name: '蒜蓉油麦菜', desc: '绿色蔬菜', calories: 50 },
+ { name: '清炒豆角', desc: '营养丰富', calories: 60 },
  { name: '白米饭', desc: '主食', calories: 130 }
  ],
  dinner: [
  { name: '豆腐汤', desc: '清淡营养', calories: 100 },
- { name: '凉拌鸡丝', desc: '高蛋白低脂肪', calories: 150 }
+ { name: '凉拌木耳', desc: '清肺润燥', calories: 40 }
  ]
  },
  wednesday: {
@@ -99,13 +106,13 @@ const defaultPlan = {
  { name: '茶叶蛋', desc: '风味独特', calories: 80 }
  ],
  lunch: [
- { name: '宫保鸡丁', desc: '经典川菜', calories: 250 },
  { name: '炒青菜', desc: '新鲜蔬菜', calories: 40 },
+ { name: '清炒茄子', desc: '软糯可口', calories: 80 },
  { name: '荞麦面', desc: '健康主食', calories: 180 }
  ],
  dinner: [
- { name: '清蒸虾', desc: '海鲜美味', calories: 120 },
- { name: '冬瓜汤', desc: '清热利湿', calories: 60 }
+ { name: '冬瓜汤', desc: '清热利湿', calories: 60 },
+ { name: '凉拌萝卜丝', desc: '开胃消食', calories: 50 }
  ]
  },
  thursday: {
@@ -114,13 +121,13 @@ const defaultPlan = {
  { name: '豆浆', desc: '植物蛋白', calories: 80 }
  ],
  lunch: [
- { name: '回锅肉', desc: '川味经典', calories: 320 },
  { name: '炒土豆丝', desc: '家常小菜', calories: 100 },
+ { name: '清炒白菜', desc: '清淡爽口', calories: 40 },
  { name: '米饭', desc: '主食', calories: 130 }
  ],
  dinner: [
  { name: '蔬菜沙拉', desc: '低脂健康', calories: 150 },
- { name: '烤鸡胸肉', desc: '高蛋白', calories: 200 }
+ { name: '蘑菇汤', desc: '鲜美营养', calories: 80 }
  ]
  },
  friday: {
@@ -129,26 +136,28 @@ const defaultPlan = {
  { name: '酸奶', desc: '助消化', calories: 100 }
  ],
  lunch: [
- { name: '酸菜鱼', desc: '酸辣开胃', calories: 280 },
  { name: '炒豆芽', desc: '清爽可口', calories: 60 },
+ { name: '清炒苦瓜', desc: '清热解毒', calories: 50 },
  { name: '米饭', desc: '主食', calories: 130 }
  ],
  dinner: [
- { name: '蘑菇汤', desc: '鲜美营养', calories: 80 },
- { name: '清蒸南瓜', desc: '甜糯可口', calories: 90 }
+ { name: '南瓜汤', desc: '甜糯可口', calories: 90 },
+ { name: '凉拌海带丝', desc: '富含碘质', calories: 40 }
  ]
  },
  saturday: {
  breakfast: [
- { name: '油条', desc: '传统早点', calories: 180 },
+ { name: '红薯', desc: '天然甜味', calories: 120 },
  { name: '稀饭', desc: '清淡养胃', calories: 80 }
  ],
  lunch: [
- { name: '火锅', desc: '家庭聚餐', calories: 400 },
- { name: '各种蔬菜', desc: '营养均衡', calories: 100 }
+ { name: '炒各种蔬菜', desc: '营养均衡', calories: 100 },
+ { name: '清炒荷兰豆', desc: '脆嫩爽口', calories: 70 },
+ { name: '杂粮饭', desc: '健康主食', calories: 140 }
  ],
  dinner: [
- { name: '饺子', desc: '传统美食', calories: 250 }
+ { name: '蔬菜粥', desc: '清淡易消化', calories: 120 },
+ { name: '凉拌番茄', desc: '酸甜可口', calories: 40 }
  ]
  },
  sunday: {
@@ -157,8 +166,8 @@ const defaultPlan = {
  { name: '果汁', desc: '新鲜水果', calories: 80 }
  ],
  lunch: [
- { name: '红烧鱼', desc: '营养丰富', calories: 280 },
  { name: '清炒时蔬', desc: '绿色健康', calories: 60 },
+ { name: '炒藕片', desc: '爽脆可口', calories: 80 },
  { name: '米饭', desc: '主食', calories: 130 }
  ],
  dinner: [
@@ -173,15 +182,42 @@ const goBack = () => {
 const getMealFoods = (day, meal) => {
  return mealPlan.value[day]?.[meal] || [];
 };
+const transformPlanData = (apiPlan) => {
+ if (!apiPlan || !Array.isArray(apiPlan))
+ return defaultPlan;
+ const transformed = {};
+ apiPlan.forEach(dayPlan => {
+ const dayKey = dayKeyMap[dayPlan.day];
+ if (!dayKey)
+ return;
+ transformed[dayKey] = { breakfast: [], lunch: [], dinner: [] };
+ dayPlan.meals.forEach(meal => {
+ const mealKey = mealKeyMap[meal.type];
+ if (!mealKey)
+ return;
+ transformed[dayKey][mealKey] = [{
+ name: meal.name,
+ desc: meal.ingredients?.join('、') || '营养均衡',
+ calories: meal.nutrition?.calories || 0
+ }];
+ });
+ });
+ return Object.keys(transformed).length > 0 ? transformed : defaultPlan;
+};
 const generatePlan = async () => {
  try {
  loading.value = true;
- const response = await generateMealPlan({
+ const planData = {
  days: 7,
- preferences: '均衡营养'
- });
+ preferences: familyHealthData.value?.preferences || '均衡营养',
+ familySize: parseInt(familyHealthData.value?.peopleCount) || 3,
+ allergies: familyHealthData.value?.allergies || '',
+ restrictions: familyHealthData.value?.restrictions || '',
+ diseases: familyHealthData.value?.diseases || ''
+ };
+ const response = await generateMealPlan(planData);
  if (response.code === 200) {
- mealPlan.value = response.data;
+ mealPlan.value = transformPlanData(response.data.plan);
  showToast({ type: 'success', message: '食谱生成成功' });
  }
  else {
@@ -198,8 +234,34 @@ const generatePlan = async () => {
  loading.value = false;
  }
 };
+
+const loadFamilyHealthData = async () => {
+ try {
+ const response = await getFamilyHealth();
+ if (response.code === 200) {
+ familyHealthData.value = response.data;
+ }
+ } catch (error) {
+ console.error('加载家庭健康数据失败:', error);
+ }
+};
+
+const generateShoppingList = () => {
+ const currentPlan = Object.entries(mealPlan.value).map(([dayKey, meals]) => ({
+ day: Object.entries(dayKeyMap).find(([label, key]) => key === dayKey)?.[0] || dayKey,
+ meals: Object.entries(meals).map(([mealKey, foods]) => ({
+ type: Object.entries(mealKeyMap).find(([label, key]) => key === mealKey)?.[0] || mealKey,
+ ingredients: foods.map(f => f.name)
+ }))
+ }));
+ 
+ const planParam = encodeURIComponent(JSON.stringify(currentPlan));
+ router.push({ path: '/shopping-list', query: { plan: planParam } });
+};
+
 onMounted(() => {
  mealPlan.value = defaultPlan;
+ loadFamilyHealthData();
 });
 </script>
 

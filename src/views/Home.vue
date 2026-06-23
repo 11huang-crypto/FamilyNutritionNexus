@@ -1,6 +1,6 @@
 <template>
   <div class="home-page">
-    <van-nav-bar title="AI智能菜篮子" />
+    <AppNavbar title="AI智能菜篮子" :showBack="false" />
     
     <div class="hero-section">
       <div class="hero-bg"></div>
@@ -40,7 +40,7 @@
       </div>
     </div>
 
-    <div class="basket-section" v-if="basketData">
+    <div class="basket-section" v-if="basketData.items?.length > 0">
       <div class="section-header">
         <h2 class="section-title">我的菜篮子</h2>
         <span class="section-count">{{ basketData.items?.length || 0 }} 种食材</span>
@@ -69,7 +69,7 @@
         </van-card>
       </div>
       
-      <div class="view-all" @click="navigateTo('/recognize')">
+      <div class="view-all" @click="navigateTo('/basket')">
         <span>查看全部</span>
         <van-icon name="arrow-right" />
       </div>
@@ -92,63 +92,84 @@
   </div>
 </template>
 
-<script setup>import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { showToast } from 'vant';
-import { getFamilyBasket, checkFoodConflict } from '../api';
-const router = useRouter();
-const loading = ref(true);
-const basketData = ref(null);
-const riskWarnings = ref([]);
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { showToast } from 'vant'
+import AppNavbar from '@/components/AppNavbar.vue'
+import { useAppStore } from '@/stores'
+import { getFamilyBasket, checkFoodConflict } from '../api'
+
+const router = useRouter()
+const store = useAppStore()
+const loading = ref(true)
+const riskWarnings = ref([])
+
+const basketData = computed(() => ({
+  items: store.basket,
+  total: store.basket.length
+}))
+
 const navigateTo = (path) => {
- router.push(path);
-};
+  router.push(path)
+}
+
+const getCalories = (item) => {
+  const nutrients = item.nutrients || {}
+  return nutrients.calories || Math.round((nutrients.vitaminC || 0) * 0.5 + (nutrients.fiber || 0) * 10 + (nutrients.potassium || 0) * 0.1)
+}
+
 const getNutritionTag = (item) => {
- if (item.calories < 50)
- return 'success';
- if (item.calories < 150)
- return 'primary';
- return 'warning';
-};
+  const calories = getCalories(item)
+  if (calories < 50) return 'success'
+  if (calories < 150) return 'primary'
+  return 'warning'
+}
+
 const getNutritionLabel = (item) => {
- return `${item.calories} kcal`;
-};
+  const calories = getCalories(item)
+  return `${calories} kcal`
+}
+
 const fetchBasketData = async () => {
- try {
- loading.value = true;
- const response = await getFamilyBasket();
- if (response.code === 200) {
- basketData.value = response.data;
- checkFoodConflicts();
- }
- else {
- console.error('Failed to fetch basket:', response.message);
- showToast({ type: 'fail', message: response.message || '获取数据失败' });
- }
- }
- catch (error) {
- console.error('Error fetching basket:', error);
- showToast({ type: 'fail', message: '网络连接失败，请检查网络' });
- }
- finally {
- loading.value = false;
- }
-};
+  try {
+    loading.value = true
+    const response = await getFamilyBasket()
+    if (response.code === 200) {
+      if (response.data?.items) {
+        store.basket = response.data.items
+      }
+      checkFoodConflicts()
+    } else {
+      console.error('Failed to fetch basket:', response.message)
+      showToast({ type: 'fail', message: response.message || '获取数据失败' })
+    }
+  } catch (error) {
+    console.error('Error fetching basket:', error)
+    showToast({ type: 'fail', message: '网络连接失败，请检查网络' })
+  } finally {
+    loading.value = false
+  }
+}
+
 const checkFoodConflicts = async () => {
- try {
- const items = basketData.value?.items?.map(item => item.name) || [];
- const response = await checkFoodConflict({ foods: items });
- if (response.code === 200 && response.data.conflicts?.length > 0) {
- riskWarnings.value = response.data.conflicts.map(c => `${c.food1} + ${c.food2}: ${c.reason}`);
- }
- }
- catch (error) {
- console.error('Error checking conflicts:', error);
- }
-};
+  try {
+    const items = store.basket.map(item => item.name) || []
+    const response = await checkFoodConflict({ items })
+    if (response.code === 200 && response.data.conflicts?.length > 0) {
+      riskWarnings.value = response.data.conflicts.map(c => `${c.items.join(' + ')}：${c.reason}`)
+    } else {
+      riskWarnings.value = []
+    }
+  } catch (error) {
+    console.error('Error checking conflicts:', error)
+    riskWarnings.value = []
+  }
+}
+
 onMounted(() => {
- fetchBasketData();
-});
+  fetchBasketData()
+})
 </script>
 
 <style lang="scss" scoped>

@@ -125,9 +125,10 @@
   </div>
 </template>
 
-<script setup>import { ref, reactive } from 'vue';
+<script setup>import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
+import { saveFamilyHealth, getFamilyHealth } from '../api';
 const router = useRouter();
 const loading = ref(false);
 const form = reactive({
@@ -165,7 +166,6 @@ const removeMember = (index) => {
  }
 };
 const onSubmit = async () => {
- // 表单验证
  if (!form.familyName.trim()) {
  showToast({ type: 'fail', message: '请输入家庭名称' });
  return;
@@ -177,14 +177,12 @@ const onSubmit = async () => {
  return;
  }
  
- // 验证至少有一位成员信息完整
  const validMembers = form.members.filter(m => m.name.trim() && m.age);
  if (validMembers.length === 0) {
  showToast({ type: 'fail', message: '请至少填写一位成员信息' });
  return;
  }
  
- // 验证年龄是否为有效数字
  for (const member of form.members) {
  if (member.age && (isNaN(parseInt(member.age)) || parseInt(member.age) < 0)) {
  showToast({ type: 'fail', message: '年龄必须为非负整数' });
@@ -194,7 +192,7 @@ const onSubmit = async () => {
  
  try {
  loading.value = true;
- console.log('提交家庭健康档案:', form);
+ await saveFamilyHealth(form);
  showToast({ type: 'success', message: '档案保存成功' });
  setTimeout(() => {
  router.push('/');
@@ -208,6 +206,28 @@ const onSubmit = async () => {
  loading.value = false;
  }
 };
+
+const loadHealthData = async () => {
+ try {
+ const response = await getFamilyHealth();
+ if (response.code === 200 && response.data) {
+ const data = response.data;
+ form.familyName = data.familyName || '';
+ form.peopleCount = data.peopleCount || '';
+ form.allergies = data.allergies || '';
+ form.diseases = data.diseases || '';
+ form.preferences = data.preferences || '';
+ form.restrictions = data.restrictions || '';
+ form.members = data.members && data.members.length > 0 ? data.members : form.members;
+ }
+ } catch (error) {
+ console.error('加载健康档案失败:', error);
+ }
+};
+
+onMounted(() => {
+ loadHealthData();
+});
 </script>
 
 <style lang="scss" scoped>

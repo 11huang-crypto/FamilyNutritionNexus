@@ -109,12 +109,13 @@
  */
 
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { showToast } from 'vant';
-import { getShoppingList } from '../api';
+import { getShoppingList, generateShoppingListFromPlan, updateShoppingItem, removeShoppingItem, addShoppingItem } from '../api';
 
 // 路由实例
 const router = useRouter();
+const route = useRoute();
 
 // 响应式状态
 const initialLoading = ref(true);           // 初始加载状态
@@ -182,18 +183,29 @@ const goBack = () => {
 /**
  * 获取初始采购清单数据
  */
+const transformShoppingData = (apiItems) => {
+  if (!apiItems || !Array.isArray(apiItems))
+    return { items: [], checked: [] };
+  const items = apiItems.map(item => ({
+    id: String(item.id),
+    name: item.name,
+    quantity: item.quantity || 1,
+    unit: item.unit || '个'
+  }));
+  const checked = apiItems.filter(item => item.checked).map(item => String(item.id));
+  return { items, checked };
+};
 const fetchShoppingListData = async () => {
   try {
     initialLoading.value = true;
-    // 调用 GET /api/shopping-list 获取初始数据
     const response = await getShoppingList();
     if (response.code === 200) {
-      listItems.value = response.data.items || [];
-      checkedItems.value = response.data.checked || [];
+      const { items, checked } = transformShoppingData(response.data.items);
+      listItems.value = items;
+      checkedItems.value = checked;
     }
   } catch (error) {
     console.error('获取采购清单失败:', error);
-    // 使用本地 Mock 数据
     listItems.value = [
       { id: '1', name: '西兰花', quantity: 2, unit: '颗' },
       { id: '2', name: '鸡胸肉', quantity: 500, unit: '克' },
@@ -480,18 +492,23 @@ const onCheckChange = (value) => {
 /**
  * 【事件处理】数量变更
  */
-const updateQuantity = (id, quantity) => {
+const updateQuantity = async (id, quantity) => {
   const item = listItems.value.find(i => i.id === id);
   if (item) {
     item.quantity = quantity;
     sendMessage('update', { id, quantity });
+    try {
+      await updateShoppingItem({ id: parseInt(id), quantity });
+    } catch (error) {
+      console.error('更新数量失败:', error);
+    }
   }
 };
 
 /**
  * 【事件处理】添加新物品
  */
-const addItem = () => {
+const addItem = async () => {
   const name = newItemName.value.trim();
   if (!name) {
     showToast({
@@ -501,27 +518,36 @@ const addItem = () => {
     return;
   }
   
-  const newId = Date.now().toString();
-  listItems.value.push({
-    id: newId,
-    name,
-    quantity: 1,
-    unit: '个'
-  });
-  newItemName.value = '';
-  
-  sendMessage('add', { id: newId, name, quantity: 1, unit: '个' });
-  
-  showToast({
-    type: 'success',
-    message: '添加成功'
-  });
+  try {
+    const response = await addShoppingItem({ name, quantity: 1, unit: '个' });
+    
+    if (response.code === 200) {
+      const newItem = response.data;
+      listItems.value.push({
+        id: String(newItem.id),
+        name: newItem.name,
+        quantity: newItem.quantity || 1,
+        unit: newItem.unit || '个'
+      });
+      newItemName.value = '';
+      
+      sendMessage('add', { id: String(newItem.id), name, quantity: 1, unit: '个' });
+      
+      showToast({
+        type: 'success',
+        message: '添加成功'
+      });
+    }
+  } catch (error) {
+    console.error('添加采购项失败:', error);
+    showToast({ type: 'fail', message: '添加失败，请重试' });
+  }
 };
 
 /**
  * 【事件处理】清除已勾选的物品
  */
-const clearChecked = () => {
+const clearChecked = async () => {
   if (checkedItems.value.length === 0) {
     showToast({
       type: 'warning',
@@ -530,12 +556,11 @@ const clearChecked = () => {
     return;
   }
   
-  // 发送删除消息
   checkedItems.value.forEach(id => {
     sendMessage('remove', { id });
+    removeShoppingItem(parseInt(id)).catch(err => console.error('删除失败:', err));
   });
   
-  // 本地删除
   listItems.value = listItems.value.filter(item => !checkedItems.value.includes(item.id));
   checkedItems.value = [];
   
@@ -556,13 +581,32 @@ const shareList = () => {
 };
 
 /**
+ * 从食谱生成采购清单
+ */
+const generateFromPlan = async () => {
+  try {
+    const planParam = route.query.plan;
+    if (!planParam) return;
+    
+    const planData = JSON.parse(decodeURIComponent(planParam));
+    const response = await generateShoppingListFromPlan({ plan: planData });
+    
+    if (response.code === 200) {
+      showToast({ type: 'success', message: response.message });
+      fetchShoppingListData();
+    }
+  } catch (error) {
+    console.error('从食谱生成采购清单失败:', error);
+    showToast({ type: 'fail', message: '生成采购清单失败' });
+  }
+};
+
+/**
  * 组件挂载时初始化
  */
 onMounted(() => {
-  // 获取初始数据
   fetchShoppingListData();
-  
-  // 连接 WebSocket
+  generateFromPlan();
   initWebSocket();
 });
 
