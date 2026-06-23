@@ -145,7 +145,7 @@ const fetchBasketData = async () => {
 const checkFoodConflicts = async () => {
   try {
     const items = store.basket.map(item => item.name) || []
-    const response = await checkFoodConflict({ items })
+    const response = await checkFoodConflict(1, { items })
     if (response.code === 200 && response.data.conflicts?.length > 0) {
       riskWarnings.value = response.data.conflicts.map(c => `${c.items.join(' + ')}：${c.reason}`)
     } else {

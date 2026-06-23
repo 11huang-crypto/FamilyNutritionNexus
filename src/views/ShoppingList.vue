@@ -204,7 +204,7 @@ const initWebSocket = () => {
   // 构建 WebSocket URL（根据当前页面协议自动选择 ws 或 wss）
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.host;
-  const wsUrl = `${protocol}//${host}/ws/shopping-list`;
+  const wsUrl = `${protocol}//${host}/ws`;
   
   // 关闭已存在的连接
   if (ws) {

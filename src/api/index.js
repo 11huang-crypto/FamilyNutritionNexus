@@ -59,15 +59,16 @@ export const analyzeImage = async (formData) => {
 
 /**
  * 获取家庭菜篮子数据
- * GET /api/family/basket
+ * GET /api/basket/family/{familyId}
+ * @param {number} familyId - 家庭ID
  * @returns {Promise<Object>} - 菜篮子数据
  */
-export const getFamilyBasket = async () => {
+export const getFamilyBasket = async (familyId = 1) => {
   if (USE_MOCK) {
     return mockApi.getFamilyBasket();
   }
   try {
-    const response = await axios.get('/api/family/basket');
+    const response = await axios.get(`/api/basket/family/${familyId}`);
     return response;
   } catch (error) {
     console.error('获取菜篮子数据失败:', error);
@@ -75,12 +76,12 @@ export const getFamilyBasket = async () => {
   }
 };
 
-export const checkFoodConflict = async (data) => {
+export const checkFoodConflict = async (familyId = 1, data) => {
   if (USE_MOCK) {
-    return mockApi.checkFoodConflict(data);
+    return mockApi.checkFoodConflict(data || { items: [] });
   }
   try {
-    const response = await axios.post('/api/basket/check', data);
+    const response = await axios.get('/api/basket/check', { params: { family_id: familyId } });
     return response;
   } catch (error) {
     console.error('检查食材禁忌失败:', error);
@@ -90,12 +91,16 @@ export const checkFoodConflict = async (data) => {
 
 export const checkBasketConflict = checkFoodConflict
 
-export const addToBasket = async (item) => {
+export const addToBasket = async (item, familyId = 1) => {
   if (USE_MOCK) {
     return mockApi.addToBasket(item);
   }
   try {
-    const response = await axios.post('/api/family/basket/add', item);
+    const response = await axios.post('/api/basket/item', {
+      family_id: familyId,
+      ingredient_name: item.name || item.ingredient_name,
+      quantity: String(item.quantity || 1)
+    });
     return response;
   } catch (error) {
     console.error('添加到菜篮子失败:', error);
@@ -108,7 +113,7 @@ export const deleteFromBasket = async (id) => {
     return mockApi.deleteFromBasket(id);
   }
   try {
-    const response = await axios.delete(`/api/family/basket/${id}`);
+    const response = await axios.delete(`/api/basket/item/${id}`);
     return response;
   } catch (error) {
     console.error('从菜篮子删除失败:', error);
@@ -116,12 +121,12 @@ export const deleteFromBasket = async (id) => {
   }
 };
 
-export const getFamilyHealth = async () => {
+export const getFamilyHealth = async (familyId = 1) => {
   if (USE_MOCK) {
     return mockApi.getFamilyHealth();
   }
   try {
-    const response = await axios.get('/api/family/health');
+    const response = await axios.get(`/api/health/family/${familyId}`);
     return response;
   } catch (error) {
     console.error('获取家庭健康信息失败:', error);
@@ -129,12 +134,17 @@ export const getFamilyHealth = async () => {
   }
 };
 
-export const saveFamilyHealth = async (data) => {
+export const saveFamilyHealth = async (data, familyId = 1) => {
   if (USE_MOCK) {
     return mockApi.saveFamilyHealth(data);
   }
   try {
-    const response = await axios.post('/api/family/health', data);
+    const response = await axios.post('/api/health/profile', {
+      family_id: familyId,
+      name: data.name || '',
+      conditions: data.conditions || data.diseases || [],
+      allergens: data.allergens || []
+    });
     return response;
   } catch (error) {
     console.error('保存家庭健康信息失败:', error);
@@ -142,12 +152,12 @@ export const saveFamilyHealth = async (data) => {
   }
 };
 
-export const getShoppingList = async () => {
+export const getShoppingList = async (familyId = 1) => {
   if (USE_MOCK) {
     return mockApi.getShoppingList();
   }
   try {
-    const response = await axios.get('/api/shopping-list');
+    const response = await axios.get('/api/shopping-list/realtime', { params: { family_id: familyId } });
     return response;
   } catch (error) {
     console.error('获取采购清单失败:', error);
@@ -155,12 +165,12 @@ export const getShoppingList = async () => {
   }
 };
 
-export const generateMealPlan = async (data) => {
+export const generateMealPlan = async (data, familyId = 1) => {
   if (USE_MOCK) {
     return mockApi.generateMealPlan(data);
   }
   try {
-    const response = await axios.post('/api/meal-plan', data);
+    const response = await axios.post(`/api/meal-plan/generate`, null, { params: { family_id: familyId } });
     return response;
   } catch (error) {
     console.error('生成食谱失败:', error);
