@@ -1,8 +1,24 @@
 <template>
   <div class="family-health-page">
-    <van-nav-bar title="家庭健康档案" left-arrow @click-left="goBack" />
+    <AppNavbar title="家庭健康档案" :showBack="true" />
     
     <div class="form-container">
+      <div class="family-avatars">
+        <FamilyAvatar 
+          v-for="(member, index) in form.members.filter(m => m.name.trim())" 
+          :key="index"
+          :name="member.name"
+          :role="member.gender || '成员'"
+          size="medium"
+        />
+        <FamilyAvatar 
+          v-if="form.members.filter(m => m.name.trim()).length === 0"
+          name="家庭"
+          role="待添加成员"
+          size="medium"
+        />
+      </div>
+      
       <div class="section-header">
         <van-icon name="users" size="20" />
         <span>家庭成员信息</span>
@@ -128,6 +144,8 @@
 <script setup>import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
+import AppNavbar from '@/components/AppNavbar.vue';
+import FamilyAvatar from '@/components/FamilyAvatar.vue';
 import { saveFamilyHealth, getFamilyHealth } from '../api';
 const router = useRouter();
 const loading = ref(false);
@@ -239,6 +257,15 @@ onMounted(() => {
 
 .form-container {
   padding: 16px;
+}
+
+.family-avatars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  padding: 16px 0;
+  margin-bottom: 16px;
 }
 
 .section-header {

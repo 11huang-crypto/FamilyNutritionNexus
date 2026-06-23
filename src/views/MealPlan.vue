@@ -1,6 +1,6 @@
 <template>
   <div class="meal-plan-page">
-    <van-nav-bar title="一周食谱" left-arrow @click-left="goBack" />
+    <AppNavbar title="一周食谱" :showBack="true" />
     
     <div class="week-tabs">
       <van-tab v-for="day in weekDays" :key="day.key" :title="day.label">
@@ -12,18 +12,15 @@
             </div>
             
             <div class="food-list">
-              <van-card 
+              <VegCard 
                 v-for="(food, index) in getMealFoods(day.key, meal.key)" 
                 :key="index"
-                :title="food.name"
+                :name="food.name"
+                :image="`https://neeko-copilot.bytedance.net/api/text_to_image?prompt=fresh%20${encodeURIComponent(food.name)}%20dish%20on%20plate&image_size=square`"
                 :desc="food.desc"
-                thumb="https://neeko-copilot.bytedance.net/api/text_to_image?prompt=fresh%20${encodeURIComponent(food.name)}%20dish%20on%20plate&image_size=square"
-                class="food-card"
-              >
-                <template #footer>
-                  <span class="calories">{{ food.calories }} kcal</span>
-                </template>
-              </van-card>
+                :calories="food.calories"
+                size="small"
+              />
             </div>
           </div>
         </div>
@@ -48,6 +45,8 @@
 <script setup>import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
+import AppNavbar from '@/components/AppNavbar.vue';
+import VegCard from '@/components/VegCard.vue';
 import { generateMealPlan, getFamilyHealth } from '../api';
 const router = useRouter();
 const loading = ref(false);
@@ -303,13 +302,6 @@ onMounted(() => {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 12px;
-      
-      .food-card {
-        .calories {
-          color: #4CAF50;
-          font-size: 12px;
-        }
-      }
     }
   }
 }

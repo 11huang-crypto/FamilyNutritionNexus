@@ -47,26 +47,20 @@
       </div>
       
       <div class="risk-alert" v-if="riskWarnings.length > 0">
-        <van-tag type="danger" closeable @close="riskWarnings = []">
-          <van-icon name="warning-o" />
-          {{ riskWarnings[0] }}
-        </van-tag>
+        <AlertBar type="warning" :message="riskWarnings[0]" :closable="true" @close="riskWarnings = []" />
       </div>
       
       <div class="basket-items">
-        <van-card 
+        <VegCard 
           v-for="item in basketData.items?.slice(0, 4)" 
           :key="item.id"
-          :title="item.name"
+          :name="item.name"
+          :image="item.image"
           :desc="`${item.quantity}${item.unit}`"
-          thumb="https://neeko-copilot.bytedance.net/api/text_to_image?prompt=fresh%20${encodeURIComponent(item.name)}%20food%20on%20white%20background&image_size=square"
-        >
-          <template #tags>
-            <van-tag size="small" :type="getNutritionTag(item)">
-              {{ getNutritionLabel(item) }}
-            </van-tag>
-          </template>
-        </van-card>
+          :calories="getCalories(item)"
+          :nutrients="getNutrientKeys(item)"
+          size="small"
+        />
       </div>
       
       <div class="view-all" @click="navigateTo('/basket')">
@@ -97,6 +91,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import AppNavbar from '@/components/AppNavbar.vue'
+import AlertBar from '@/components/AlertBar.vue'
+import VegCard from '@/components/VegCard.vue'
+import NutriBadge from '@/components/NutriBadge.vue'
 import { useAppStore } from '@/stores'
 import { getFamilyBasket, checkFoodConflict } from '../api'
 
@@ -119,16 +116,9 @@ const getCalories = (item) => {
   return nutrients.calories || Math.round((nutrients.vitaminC || 0) * 0.5 + (nutrients.fiber || 0) * 10 + (nutrients.potassium || 0) * 0.1)
 }
 
-const getNutritionTag = (item) => {
-  const calories = getCalories(item)
-  if (calories < 50) return 'success'
-  if (calories < 150) return 'primary'
-  return 'warning'
-}
-
-const getNutritionLabel = (item) => {
-  const calories = getCalories(item)
-  return `${calories} kcal`
+const getNutrientKeys = (item) => {
+  const nutrients = item.nutrients || {}
+  return Object.keys(nutrients).filter(k => nutrients[k] > 0).slice(0, 3)
 }
 
 const fetchBasketData = async () => {

@@ -1,6 +1,6 @@
 <template>
   <div class="nutrition-page">
-    <van-nav-bar title="营养分析" left-arrow @click-left="goBack" />
+    <AppNavbar title="营养分析" :showBack="true" />
     
     <!-- 加载状态 -->
     <van-loading v-if="loading" class="loading" />
@@ -25,16 +25,15 @@
       @action="goToRecognize"
     />
     
-    <div class="food-header">
-      <van-image 
-        :src="`https://neeko-copilot.bytedance.net/api/text_to_image?prompt=fresh%20${encodeURIComponent(foodData.name)}%20food%20on%20white%20background&image_size=square`"
-        mode="aspectFill"
-        class="food-image"
+    <div class="food-section">
+      <VegCard 
+        :name="foodData.name"
+        :image="`https://neeko-copilot.bytedance.net/api/text_to_image?prompt=fresh%20${encodeURIComponent(foodData.name)}%20food%20on%20white%20background&image_size=square`"
+        :desc="foodData.category"
+        :calories="totalCalories"
+        :nutrients="['protein', 'carbs', 'fat', 'fiber']"
+        size="large"
       />
-      <div class="food-info">
-        <h1 class="food-name">{{ foodData.name }}</h1>
-        <p class="food-category">{{ foodData.category }}</p>
-      </div>
     </div>
 
     <div class="nutrition-summary">
@@ -58,27 +57,26 @@
 
     <div class="nutrition-details">
       <h3 class="section-title">营养成分详情</h3>
-      
-      <van-cell-group>
-        <van-cell title="热量" :value="`${foodData?.calories || 0} kcal/100g`" />
-        <van-cell title="蛋白质" :value="`${foodData?.protein || 0} g/100g`" />
-        <van-cell title="碳水化合物" :value="`${foodData?.carbs || 0} g/100g`" />
-        <van-cell title="脂肪" :value="`${foodData?.fat || 0} g/100g`" />
-        <van-cell title="膳食纤维" :value="`${foodData?.fiber || 0} g/100g`" />
-        <van-cell title="维生素C" :value="`${foodData?.vitaminC || 0} mg/100g`" />
-        <van-cell title="钙" :value="`${foodData?.calcium || 0} mg/100g`" />
-        <van-cell title="铁" :value="`${foodData?.iron || 0} mg/100g`" />
-      </van-cell-group>
+      <div class="nutrition-badges">
+        <NutriBadge label="热量" :value="foodData?.calories || 0" unit="kcal" />
+        <NutriBadge label="蛋白质" :value="foodData?.protein || 0" unit="g" />
+        <NutriBadge label="碳水" :value="foodData?.carbs || 0" unit="g" />
+        <NutriBadge label="脂肪" :value="foodData?.fat || 0" unit="g" />
+        <NutriBadge label="膳食纤维" :value="foodData?.fiber || 0" unit="g" />
+        <NutriBadge label="维生素C" :value="foodData?.vitaminC || 0" unit="mg" />
+        <NutriBadge label="钙" :value="foodData?.calcium || 0" unit="mg" />
+        <NutriBadge label="铁" :value="foodData?.iron || 0" unit="mg" />
+      </div>
     </div>
 
     <div class="health-tips">
       <h3 class="section-title">健康提示</h3>
-      <div class="tips-list">
-        <div class="tip-item" v-for="(tip, index) in healthTips" :key="index">
-          <van-icon :name="tip.icon" :color="tip.color" />
-          <span>{{ tip.text }}</span>
-        </div>
-      </div>
+      <AlertBar 
+        v-for="(tip, index) in healthTips" 
+        :key="index"
+        :type="tip.color === '#4CAF50' ? 'success' : 'info'"
+        :message="tip.text"
+      />
     </div>
 
     <div class="dietary-suggestions">
@@ -93,6 +91,10 @@
 <script setup>import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { showToast } from 'vant';
+import AppNavbar from '@/components/AppNavbar.vue';
+import VegCard from '@/components/VegCard.vue';
+import NutriBadge from '@/components/NutriBadge.vue';
+import AlertBar from '@/components/AlertBar.vue';
 import ErrorState from '../components/ErrorState.vue';
 import EmptyState from '../components/EmptyState.vue';
 const router = useRouter();
@@ -233,40 +235,6 @@ onMounted(() => {
   transform: translate(-50%, -50%);
 }
 
-.food-header {
-  background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%);
-  padding: 20px;
-  display: flex;
-  gap: 16px;
-  
-  .food-image {
-    width: 100px;
-    height: 100px;
-    border-radius: 12px;
-    background: #fff;
-  }
-  
-  .food-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    
-    .food-name {
-      color: #fff;
-      font-size: 20px;
-      font-weight: bold;
-      margin: 0 0 4px 0;
-    }
-    
-    .food-category {
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 14px;
-      margin: 0;
-    }
-  }
-}
-
 .nutrition-summary {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -297,6 +265,10 @@ onMounted(() => {
   }
 }
 
+.food-section {
+  padding: 16px;
+}
+
 .nutrition-details,
 .health-tips,
 .dietary-suggestions {
@@ -311,22 +283,11 @@ onMounted(() => {
     color: #333;
     margin-bottom: 12px;
   }
-}
 
-.tips-list {
-  .tip-item {
+  .nutrition-badges {
     display: flex;
-    align-items: center;
-    padding: 8px 0;
-    
-    .van-icon {
-      margin-right: 8px;
-    }
-    
-    span {
-      font-size: 14px;
-      color: #666;
-    }
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }
 

@@ -1,7 +1,7 @@
 <template>
   <div class="nutrition-analysis">
     <!-- 页面头部 -->
-    <van-nav-bar title="营养分析" left-arrow @click-left="handleBack" />
+    <AppNavbar title="营养分析" :showBack="true" />
     
     <!-- 加载状态 -->
     <van-loading v-if="loading" class="loading" />
@@ -27,59 +27,48 @@
     <!-- 内容区域 -->
     <van-scroll-view v-else scroll-y class="content">
       <!-- 食物基本信息 -->
-      <van-card>
-        <div class="food-header">
-          <van-image 
-            :src="nutritionData.image" 
-            mode="aspectFill" 
-            class="food-image"
-          />
-          <div class="food-info">
-            <h3 class="food-name">{{ nutritionData.name }}</h3>
-            <p class="food-category">{{ nutritionData.category }}</p>
-          </div>
-        </div>
-      </van-card>
+      <VegCard 
+        :name="nutritionData.name"
+        :image="nutritionData.image"
+        :desc="nutritionData.category"
+        :calories="nutritionData.calories"
+        :nutrients="getNutrientKeys(nutritionData)"
+        size="medium"
+      />
       
       <!-- 营养成分概览 -->
-      <van-card title="营养成分概览">
-        <van-grid :column-num="4" border="false">
-          <van-grid-item 
+      <div class="nutrition-overview-card">
+        <h4 class="card-title">营养成分概览</h4>
+        <div class="nutrition-badges">
+          <NutriBadge 
             v-for="item in nutritionOverview" 
             :key="item.label"
-            class="nutrition-item"
-          >
-            <div class="nutrition-value">{{ item.value }}</div>
-            <div class="nutrition-label">{{ item.label }}</div>
-          </van-grid-item>
-        </van-grid>
-      </van-card>
+            :label="item.label"
+            :value="item.value"
+          />
+        </div>
+      </div>
       
       <!-- 详细营养数据 -->
-      <van-card title="详细营养数据">
-        <van-cell-group inset>
-          <van-cell 
+      <div class="detail-card">
+        <h4 class="card-title">详细营养数据</h4>
+        <div class="nutrition-badges">
+          <NutriBadge 
             v-for="(value, key) in nutritionData.details" 
             :key="key"
-            :title="key"
+            :label="key"
             :value="value"
-            class="detail-item"
           />
-        </van-cell-group>
-      </van-card>
+        </div>
+      </div>
       
       <!-- 健康建议 -->
-      <van-card title="健康建议">
-        <van-tag 
-          v-for="(tag, index) in nutritionData.healthTags" 
-          :key="index"
-          :type="getTagType(tag)"
-          class="health-tag"
-        >
-          {{ tag }}
-        </van-tag>
+      <div class="detail-card">
+        <h4 class="card-title">健康建议</h4>
+        <AlertBar v-for="(tag, index) in nutritionData.healthTags" :key="index" 
+          :type="getAlertType(tag)" :message="tag" />
         <p class="health-desc">{{ nutritionData.healthTips }}</p>
-      </van-card>
+      </div>
     </van-scroll-view>
   </div>
 </template>
@@ -92,8 +81,12 @@
 
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { vanLoading, vanImage } from 'vant';
+import { vanLoading } from 'vant';
 import { get } from '@/utils/request';
+import AppNavbar from '@/components/AppNavbar.vue';
+import VegCard from '@/components/VegCard.vue';
+import NutriBadge from '@/components/NutriBadge.vue';
+import AlertBar from '@/components/AlertBar.vue';
 import ErrorState from '@/components/ErrorState.vue';
 import EmptyState from '@/components/EmptyState.vue';
 
@@ -123,13 +116,21 @@ const nutritionOverview = computed(() => {
 });
 
 /**
- * 获取标签类型
+ * 获取营养成分键列表
  */
-const getTagType = (tag) => {
-  if (tag.includes('高')) return 'danger';
-  if (tag.includes('低')) return 'success';
-  if (tag.includes('适宜')) return 'primary';
-  return 'default';
+const getNutrientKeys = (data) => {
+  if (!data?.details) return []
+  return Object.keys(data.details).filter(k => data.details[k] > 0).slice(0, 4)
+}
+
+/**
+ * 获取 AlertBar 类型
+ */
+const getAlertType = (tag) => {
+  if (tag.includes('高')) return 'warning'
+  if (tag.includes('低')) return 'success'
+  if (tag.includes('适宜')) return 'info'
+  return 'info'
 };
 
 /**
@@ -214,66 +215,31 @@ onMounted(() => {
   padding: 16px;
 }
 
-.food-header {
-  display: flex;
-  gap: 16px;
-}
+.nutrition-overview-card,
+.detail-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
 
-.food-image {
-  width: 100px;
-  height: 100px;
-  border-radius: 8px;
-}
+  .card-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin: 0 0 12px 0;
+  }
 
-.food-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.food-name {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-  margin: 0 0 8px 0;
-}
-
-.food-category {
-  font-size: 14px;
-  color: #999;
-  margin: 0;
-}
-
-.nutrition-item {
-  text-align: center;
-}
-
-.nutrition-value {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 4px;
-}
-
-.nutrition-label {
-  font-size: 12px;
-  color: #999;
-}
-
-.detail-item {
-  font-size: 14px;
-}
-
-.health-tag {
-  margin-right: 8px;
-  margin-bottom: 8px;
+  .nutrition-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
 }
 
 .health-desc {
   font-size: 14px;
   color: #666;
   line-height: 1.6;
-  margin: 12px 0 0 0;
+  margin-top: 12px;
 }
 </style>

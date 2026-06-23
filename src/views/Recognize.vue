@@ -1,12 +1,7 @@
 <template>
   <div class="recognize-page">
     <!-- 顶部导航栏 -->
-    <van-nav-bar 
-      title="食材识别" 
-      left-arrow 
-      @click-left="goBack"
-      class="nav-bar"
-    />
+    <AppNavbar title="食材识别" :showBack="true" />
     
     <!-- 上传区域 - 未选择图片时显示 -->
     <div class="upload-area" v-if="!uploadedImage">
@@ -72,22 +67,29 @@
       </div>
       
       <!-- 识别食材卡片 -->
-      <van-card 
-        :title="analysisResult.name"
+      <VegCard 
+        :name="analysisResult.name"
+        :image="generateFoodImage(analysisResult.name)"
         :desc="`新鲜度: ${analysisResult.freshness}`"
-        :thumb="generateFoodImage(analysisResult.name)"
-        class="result-card"
-      >
-      </van-card>
+        :calories="analysisResult.nutrients?.calories || 0"
+        :nutrients="getNutrientKeys(analysisResult)"
+        size="medium"
+      />
       
       <!-- 营养成分展示 -->
       <div class="nutrition-section">
         <h4 class="section-title">营养成分</h4>
-        <van-cell-group inset class="nutrition-list">
-          <van-cell title="维生素C" :value="`${analysisResult.nutrients?.vitaminC || 0} mg/100g`" />
-          <van-cell title="铁" :value="`${analysisResult.nutrients?.iron || 0} mg/100g`" />
-          <van-cell title="膳食纤维" :value="`${analysisResult.nutrients?.fiber || 0} g/100g`" />
-        </van-cell-group>
+        <div class="nutrition-badges">
+          <NutriBadge 
+            v-for="(value, key) in analysisResult.nutrients" 
+            :key="key"
+            :label="key"
+            :value="value"
+            :unit="getUnit(key)"
+          />
+          <NutriBadge v-if="!analysisResult.nutrients || Object.keys(analysisResult.nutrients).length === 0" 
+            label="暂无数据" value="-" />
+        </div>
       </div>
       
       <!-- 操作按钮 -->
@@ -122,7 +124,9 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
-// 导入封装的 API 接口
+import AppNavbar from '@/components/AppNavbar.vue';
+import VegCard from '@/components/VegCard.vue';
+import NutriBadge from '@/components/NutriBadge.vue';
 import { analyzeImage, addToBasket as addToBasketAPI } from '../api';
 
 // 路由实例
@@ -139,6 +143,22 @@ const analysisResult = ref(null);     // 识别结果
 const goBack = () => {
   router.back();
 };
+
+/**
+ * 获取营养成分键列表
+ */
+const getNutrientKeys = (result) => {
+  if (!result?.nutrients) return []
+  return Object.keys(result.nutrients).filter(k => result.nutrients[k] > 0).slice(0, 4)
+}
+
+/**
+ * 获取营养成分单位
+ */
+const getUnit = (key) => {
+  const units = { vitaminC: 'mg', iron: 'mg', fiber: 'g', calcium: 'mg', protein: 'g', calories: 'kcal' }
+  return units[key] || ''
+}
 
 /**
  * 图片选择前的校验
@@ -349,19 +369,6 @@ const backToUpload = () => {
   padding-bottom: 30px;
 }
 
-/* 导航栏样式 */
-.nav-bar {
-  background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%);
-  
-  :deep(.van-nav-bar__title) {
-    color: #fff;
-  }
-  
-  :deep(.van-icon-arrow-left) {
-    color: #fff;
-  }
-}
-
 /* 上传区域 */
 .upload-area {
   padding: 30px 20px;
@@ -452,10 +459,6 @@ const backToUpload = () => {
     }
   }
   
-  .result-card {
-    margin-bottom: 20px;
-  }
-  
   .nutrition-section {
     background: #fff;
     border-radius: 16px;
@@ -469,8 +472,10 @@ const backToUpload = () => {
       margin: 0 0 12px 0;
     }
     
-    .nutrition-list {
-      margin: 0;
+    .nutrition-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
   }
   

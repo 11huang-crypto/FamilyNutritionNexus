@@ -1,14 +1,18 @@
 <template>
   <div class="shopping-list-page">
-    <!-- 顶部导航栏 -->
-    <van-nav-bar title="采购清单" left-arrow @click-left="goBack" />
+    <AppNavbar title="采购清单" :showBack="true" />
     
     <!-- 连接状态提示栏 -->
-    <div class="connection-status" :class="connectionStatusClass">
-      <van-icon :name="connectionStatusIcon" />
-      <span>{{ connectionStatusText }}</span>
-      <van-loading v-if="isConnecting" size="14" />
-    </div>
+    <AlertBar 
+      v-if="!isConnected"
+      :type="isConnecting ? 'warning' : 'error'"
+      :message="isConnecting ? '连接中...' : '未连接 — 修改将在恢复连接后同步'"
+    />
+    <AlertBar 
+      v-else
+      type="success"
+      message="实时同步中"
+    />
 
     <!-- 列表头部 -->
     <div class="list-header">
@@ -17,10 +21,9 @@
     </div>
 
     <!-- 离线提示 -->
-    <div class="offline-tip" v-if="!isConnected && !isConnecting">
-      <van-icon name="warning-o" color="#ff9800" />
-      <span>当前无网络，修改将在恢复连接后同步</span>
-    </div>
+    <AlertBar v-if="!isConnected && !isConnecting" 
+      type="warning" 
+      message="当前无网络，修改将在恢复连接后同步" />
 
     <!-- 采购清单列表 -->
     <div class="shopping-list">
@@ -111,6 +114,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { showToast } from 'vant';
+import AppNavbar from '@/components/AppNavbar.vue';
+import AlertBar from '@/components/AlertBar.vue';
 import { getShoppingList, generateShoppingListFromPlan, updateShoppingItem, removeShoppingItem, addShoppingItem } from '../api';
 
 // 路由实例
@@ -137,33 +142,6 @@ let reconnectCount = 0;
 const MAX_RECONNECT_COUNT = 5;
 // 重连间隔（毫秒）
 const RECONNECT_INTERVAL = 3000;
-
-/**
- * 连接状态图标
- */
-const connectionStatusIcon = computed(() => {
-  if (isConnecting.value) return 'loading';
-  if (isConnected.value) return 'wifi';
-  return 'wifi-o';
-});
-
-/**
- * 连接状态文本
- */
-const connectionStatusText = computed(() => {
-  if (isConnecting.value) return '连接中...';
-  if (isConnected.value) return '实时同步中';
-  return '未连接';
-});
-
-/**
- * 连接状态样式类
- */
-const connectionStatusClass = computed(() => {
-  if (isConnecting.value) return 'connecting';
-  if (isConnected.value) return 'connected';
-  return 'disconnected';
-});
 
 /**
  * 完成进度百分比
@@ -641,31 +619,6 @@ onUnmounted(() => {
   flex-direction: column;
 }
 
-/* 连接状态栏 */
-.connection-status {
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 13px;
-  
-  &.connecting {
-    background: #fff3e0;
-    color: #ff9800;
-  }
-  
-  &.connected {
-    background: #e8f5e9;
-    color: #4CAF50;
-  }
-  
-  &.disconnected {
-    background: #ffebee;
-    color: #f44336;
-  }
-}
-
 /* 列表头部 */
 .list-header {
   padding: 16px;
@@ -683,19 +636,6 @@ onUnmounted(() => {
     font-size: 14px;
     color: #999;
   }
-}
-
-/* 离线提示 */
-.offline-tip {
-  margin: 0 16px 16px;
-  padding: 12px;
-  background: #fff3e0;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #ff9800;
 }
 
 /* 采购清单 */

@@ -219,3 +219,9 @@ export const deleteShoppingItem = async (id) => {
     throw error;
   }
 };
+
+// 别名导出（兼容不同页面的导入名）
+export const addShoppingItem = addToShoppingList
+export const removeShoppingItem = deleteShoppingItem
+export const removeFromBasket = deleteFromBasket
+export const generateShoppingListFromPlan = generateShoppingList
