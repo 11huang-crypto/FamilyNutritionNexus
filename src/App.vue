@@ -1,10 +1,11 @@
 <template>
   <div id="app">
-    <router-view />
+    <Layout />
   </div>
 </template>
 
 <script setup>
+import Layout from '@/components/Layout.vue'
 </script>
 
 <style>
