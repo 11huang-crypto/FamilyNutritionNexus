@@ -1,9 +1,14 @@
 /**
  * API 接口封装
  * 所有后端接口统一在此管理
+ * 开发环境使用 Mock API，生产环境使用真实接口
  */
 
 import axios from '../utils/axios';
+import { mockApi } from '../mock/api';
+
+// 判断是否使用 Mock API
+const USE_MOCK = true;
 
 /**
  * 图片识别接口
@@ -13,6 +18,9 @@ import axios from '../utils/axios';
  */
 /** 快速识别（Mock模式下使用，仅需食材名称） */
 export const analyzeFood = async (data) => {
+  if (USE_MOCK) {
+    return mockApi.analyzeFood(data);
+  }
   try {
     const response = await axios.post('/api/analyze', data)
     return response
@@ -23,30 +31,27 @@ export const analyzeFood = async (data) => {
 }
 
 export const analyzeImage = async (formData) => {
-  // 校验参数
+  if (USE_MOCK) {
+    return mockApi.analyzeFood({});
+  }
+  
   if (!(formData instanceof FormData)) {
     throw new Error('参数必须是 FormData 类型');
   }
   
-  // 检查是否包含图片文件
   if (!formData.has('image')) {
     throw new Error('FormData 中必须包含 image 字段');
   }
   
   try {
-    // 发送 POST 请求
-    // 注意：上传文件时不需要手动设置 Content-Type
-    // axios 会自动根据 FormData 设置正确的 Content-Type（包含 boundary）
-    const response = await axios.post('/analyze', formData, {
+    const response = await axios.post('/api/analyze', formData, {
       headers: {
-        // 让浏览器自动设置 Content-Type（包含 multipart/form-data 和 boundary）
         'Content-Type': undefined
       }
     });
     
     return response;
   } catch (error) {
-    // 错误已经在 axios 拦截器中处理，这里可以做额外的错误日志记录
     console.error('图片识别接口调用失败:', error);
     throw error;
   }
@@ -58,8 +63,11 @@ export const analyzeImage = async (formData) => {
  * @returns {Promise<Object>} - 菜篮子数据
  */
 export const getFamilyBasket = async () => {
+  if (USE_MOCK) {
+    return mockApi.getFamilyBasket();
+  }
   try {
-    const response = await axios.get('/family/basket');
+    const response = await axios.get('/api/family/basket');
     return response;
   } catch (error) {
     console.error('获取菜篮子数据失败:', error);
@@ -67,16 +75,12 @@ export const getFamilyBasket = async () => {
   }
 };
 
-/**
- * 扫描食材禁忌组合
- * POST /api/basket/check
- * @param {Object} data - 食材列表数据
- * @param {string[]} data.foods - 食材名称数组
- * @returns {Promise<Object>} - 检查结果
- */
 export const checkFoodConflict = async (data) => {
+  if (USE_MOCK) {
+    return mockApi.checkFoodConflict(data);
+  }
   try {
-    const response = await axios.post('/basket/check', data);
+    const response = await axios.post('/api/basket/check', data);
     return response;
   } catch (error) {
     console.error('检查食材禁忌失败:', error);
@@ -84,35 +88,66 @@ export const checkFoodConflict = async (data) => {
   }
 };
 
-/** 菜篮子冲突检查（别名，供BasketView调用） */
 export const checkBasketConflict = checkFoodConflict
 
-/**
- * 生成一周食谱
- * POST /api/meal-plan
- * @param {Object} data - 食谱生成参数
- * @param {number} data.days - 天数
- * @param {string} data.preferences - 饮食偏好
- * @returns {Promise<Object>} - 食谱数据
- */
-export const generateMealPlan = async (data) => {
+export const addToBasket = async (item) => {
+  if (USE_MOCK) {
+    return mockApi.addToBasket(item);
+  }
   try {
-    const response = await axios.post('/meal-plan', data);
+    const response = await axios.post('/api/family/basket/add', item);
     return response;
   } catch (error) {
-    console.error('生成食谱失败:', error);
+    console.error('添加到菜篮子失败:', error);
     throw error;
   }
 };
 
-/**
- * 获取采购清单
- * GET /api/shopping-list
- * @returns {Promise<Object>} - 采购清单数据
- */
-export const getShoppingList = async () => {
+export const deleteFromBasket = async (id) => {
+  if (USE_MOCK) {
+    return mockApi.deleteFromBasket(id);
+  }
   try {
-    const response = await axios.get('/shopping-list');
+    const response = await axios.delete(`/api/family/basket/${id}`);
+    return response;
+  } catch (error) {
+    console.error('从菜篮子删除失败:', error);
+    throw error;
+  }
+};
+
+export const getFamilyHealth = async () => {
+  if (USE_MOCK) {
+    return mockApi.getFamilyHealth();
+  }
+  try {
+    const response = await axios.get('/api/family/health');
+    return response;
+  } catch (error) {
+    console.error('获取家庭健康信息失败:', error);
+    throw error;
+  }
+};
+
+export const saveFamilyHealth = async (data) => {
+  if (USE_MOCK) {
+    return mockApi.saveFamilyHealth(data);
+  }
+  try {
+    const response = await axios.post('/api/family/health', data);
+    return response;
+  } catch (error) {
+    console.error('保存家庭健康信息失败:', error);
+    throw error;
+  }
+};
+
+export const getShoppingList = async () => {
+  if (USE_MOCK) {
+    return mockApi.getShoppingList();
+  }
+  try {
+    const response = await axios.get('/api/shopping-list');
     return response;
   } catch (error) {
     console.error('获取采购清单失败:', error);
@@ -120,103 +155,67 @@ export const getShoppingList = async () => {
   }
 };
 
-/**
- * WebSocket 管理器
- * 用于采购清单实时协同编辑
- */
-/**
- * 默认导出所有API方法
- */
-export default {
-  analyzeImage,
-  getFamilyBasket,
-  checkFoodConflict,
-  generateMealPlan,
-  getShoppingList,
-  WebSocketManager
+export const generateMealPlan = async (data) => {
+  if (USE_MOCK) {
+    return mockApi.generateMealPlan(data);
+  }
+  try {
+    const response = await axios.post('/api/meal-plan', data);
+    return response;
+  } catch (error) {
+    console.error('生成食谱失败:', error);
+    throw error;
+  }
 };
 
-/**
- * WebSocket 管理器
- * 用于采购清单实时协同编辑
- */
-export class WebSocketManager {
-  constructor(url) {
-    this.url = url;
-    this.socket = null;
-    this.callbacks = {};
+export const generateShoppingList = async (data) => {
+  if (USE_MOCK) {
+    return mockApi.generateShoppingList(data);
   }
-  
-  /**
-   * 连接 WebSocket
-   * @returns {Promise} - 连接成功的 Promise
-   */
-  connect() {
-    return new Promise((resolve, reject) => {
-      // 构建完整的 WebSocket URL
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      const fullUrl = `${protocol}//${host}${this.url}`;
-      
-      this.socket = new WebSocket(fullUrl);
-      
-      this.socket.onopen = () => {
-        console.log('WebSocket connected:', fullUrl);
-        resolve();
-      };
-      
-      this.socket.onclose = (event) => {
-        console.log('WebSocket closed:', event);
-        // 可以在这里实现重连逻辑
-      };
-      
-      this.socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        reject(error);
-      };
-      
-      this.socket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (this.callbacks[data.type]) {
-            this.callbacks[data.type](data.payload);
-          }
-        } catch (parseError) {
-          console.error('WebSocket message parse error:', parseError);
-        }
-      };
-    });
+  try {
+    const response = await axios.post('/api/shopping-list/generate', data);
+    return response;
+  } catch (error) {
+    console.error('生成采购清单失败:', error);
+    throw error;
   }
-  
-  /**
-   * 注册消息回调
-   * @param {string} type - 消息类型
-   * @param {Function} callback - 回调函数
-   */
-  on(type, callback) {
-    this.callbacks[type] = callback;
+};
+
+export const addToShoppingList = async (item) => {
+  if (USE_MOCK) {
+    return mockApi.addToShoppingList(item);
   }
-  
-  /**
-   * 发送消息
-   * @param {string} type - 消息类型
-   * @param {Object} payload - 消息内容
-   */
-  send(type, payload) {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({ type, payload }));
-    } else {
-      console.warn('WebSocket not connected, message not sent');
-    }
+  try {
+    const response = await axios.post('/api/shopping-list/add', item);
+    return response;
+  } catch (error) {
+    console.error('添加采购项失败:', error);
+    throw error;
   }
-  
-  /**
-   * 关闭连接
-   */
-  close() {
-    if (this.socket) {
-      this.socket.close();
-      this.socket = null;
-    }
+};
+
+export const updateShoppingItem = async (id, data) => {
+  if (USE_MOCK) {
+    return mockApi.updateShoppingItem(id, data);
   }
-}
+  try {
+    const response = await axios.put(`/api/shopping-list/${id}`, data);
+    return response;
+  } catch (error) {
+    console.error('更新采购项失败:', error);
+    throw error;
+  }
+};
+
+export const deleteShoppingItem = async (id) => {
+  if (USE_MOCK) {
+    return mockApi.deleteShoppingItem(id);
+  }
+  try {
+    const response = await axios.delete(`/api/shopping-list/${id}`);
+    return response;
+  } catch (error) {
+    console.error('删除采购项失败:', error);
+    throw error;
+  }
+};
